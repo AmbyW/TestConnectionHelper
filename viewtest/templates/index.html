@@ -1,0 +1,112 @@
+<!-- chat/templates/chat/room.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>Request Jain</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+</head>
+<body>
+<h1>Request details for {{room_name}}</h1>
+    <div>
+        <ul class="request-message-list" id="{{room_slug}}">
+            <li class="empty">
+                <div>
+                    No request made yet from this source. Room data it's empty
+                </div>
+            </li>
+        </ul>
+    </div>
+    <div>
+        <input type="text" placeholder="Name of other Room">
+        <input type="button" value="Change room">
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        let room_name = '{{ room_name }}';
+        let room_slug = '{{ room_slug }}';
+        console.log(room_slug);
+        const requestsSocket = new WebSocket(
+            'ws://'
+            + window.location.host
+            + '/ws/requests/'
+            + room_slug
+            + '/'
+        );
+        requestsSocket.onopen = (e) => {
+            lunchSweetAlert(message='Websocket connected', type='success')
+        }
+
+        requestsSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            console.log(data);
+            removeEmptyRow();
+            addMessageRow(data);
+        };
+
+        requestsSocket.onclose = function(e) {
+            console.error('Chat socket closed unexpectedly');
+        };
+
+        //functionalities
+        lunchSweetAlert = (message = '', type = '') => {
+            if (!message || !type)
+                return;
+            Swal.fire({
+                position: 'top-end',
+                icon: type,
+                title: message,
+                showConfirmButton: false,
+                timer: 1100
+            })
+        }
+
+        iterateObject = (obj, stack, parent_node) => {
+            for(const prop in obj) {
+                let sub_node;
+                if (typeof obj[prop] === "object") {
+                    sub_node = createDropdownDiv(prop);
+                    iterateObject(obj[prop], stack + "." + prop, sub_node);
+                }else{
+                    let span = document.createElement('span');
+                    let b = document.createElement('b');
+                    b.innerText = prop;
+                    let prop_value_text = document.createTextNode(obj[prop])
+                    span.append(b, prop_value_text)
+                    sub_node = span
+                };
+                parent_node.append(sub_node)
+            }
+        }
+
+        removeEmptyRow = () => {
+            if ( document.querySelector('.request-message-list>li.empty') )
+                document.querySelector('.request-message-list>li.empty').remove()
+        }
+
+        createDropdownDiv = (title='') => {
+            let new_element = document.createElement('div');
+            new_element.className = 'dropdown';
+            if (title){
+                title_div = document.createElement('div');
+                title_div.innerText = title;
+                title_div.className = 'dropdown-title';
+                new_element.append(title_div);
+            }
+            return new_element;
+        }
+
+        addMessageRow = (data) => {
+            let new_element_li = document.createElement('li');
+            const row_title = 'Request ' + data.request.request_time;
+            let div_element = createDropdownDiv(row_title);
+            iterateObject(data, '', div_element)
+            let request_list_node = document.querySelector('.request-message-list');
+            new_element_li.append(div_element);
+            request_list_node.append(new_element_li);
+        }
+
+    </script>
+</body>
+</html>
